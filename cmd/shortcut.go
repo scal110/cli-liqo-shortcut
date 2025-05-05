@@ -7,7 +7,7 @@ import (
     "strings"
 
     liqov1beta1 "github.com/liqotech/liqo/apis/core/v1beta1"
-    networkingv1alpha1 "github.com/nates110/vnc-controller/api/v1beta1"
+    networkingv1alpha1 "github.com/scal110/forign_cluster_connector/api/v1beta1"
     "github.com/spf13/cobra"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
     "k8s.io/apimachinery/pkg/runtime"
