@@ -30,6 +30,14 @@ func init() {
     createShortcutCmd.Flags().StringVarP(&nodeB, "node-b", "b", "", "Nome del secondo virtual node (required)")
     createShortcutCmd.MarkFlagRequired("node-a")
     createShortcutCmd.MarkFlagRequired("node-b")
+
+	shortcutsCmd.AddCommand(deleteShortcutCmd)
+    // flags per delete
+    deleteShortcutCmd.Flags().StringVarP(&nodeA, "node-a", "a", "", "Nome del primo virtual node (required)")
+    deleteShortcutCmd.Flags().StringVarP(&nodeB, "node-b", "b", "", "Nome del secondo virtual node (required)")
+    deleteShortcutCmd.MarkFlagRequired("node-a")
+    deleteShortcutCmd.MarkFlagRequired("node-b")
+
 }
 
 // ---------------------------
@@ -171,5 +179,66 @@ func createShortcut() error {
     }
 
     fmt.Printf("VirtualNodeConnection %q creata con successo!\n", name)
+    return nil
+}
+
+var deleteShortcutCmd = &cobra.Command{
+    Use:   "delete",
+    Short: "Delete a VirtualNodeConnection between two foreign clusters",
+    Run: func(cmd *cobra.Command, args []string) {
+        if err := deleteShortcut(); err != nil {
+            fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+            os.Exit(1)
+        }
+    },
+}
+
+func deleteShortcut() error {
+    ctx := context.Background()
+
+    cfg, err := ctrl.GetConfig()
+    if err != nil {
+        return fmt.Errorf("unable to get kubeconfig: %w", err)
+    }
+
+    scheme := runtime.NewScheme()
+    if err := liqov1beta1.AddToScheme(scheme); err != nil {
+        return fmt.Errorf("unable to add Liqo schema: %w", err)
+    }
+    if err := networkingv1alpha1.AddToScheme(scheme); err != nil {
+        return fmt.Errorf("unable to add VNC schema: %w", err)
+    }
+
+    cl, err := client.New(cfg, client.Options{Scheme: scheme})
+    if err != nil {
+        return fmt.Errorf("unable to create client: %w", err)
+    }
+
+    // Lista tutte le connessioni e cerca quella corrispondente
+    var list networkingv1alpha1.VirtualNodeConnectionList
+    if err := cl.List(ctx, &list); err != nil {
+        return fmt.Errorf("unable to list VirtualNodeConnections: %w", err)
+    }
+
+    var toDelete *networkingv1alpha1.VirtualNodeConnection
+    for i, item := range list.Items {
+        a, b := item.Spec.VirtualNodeA, item.Spec.VirtualNodeB
+        if (a == nodeA && b == nodeB) || (a == nodeB && b == nodeA) {
+            toDelete = &list.Items[i]
+            break
+        }
+    }
+
+    if toDelete == nil {
+        fmt.Printf("Nessuna VirtualNodeConnection trovata tra %q e %q\n", nodeA, nodeB)
+        return nil
+    }
+
+    // Elimina la CR: il controller gestirà la disconnessione via finalizer
+    if err := cl.Delete(ctx, toDelete); err != nil {
+        return fmt.Errorf("failed to delete VirtualNodeConnection %q: %w", toDelete.Name, err)
+    }
+
+    fmt.Printf("Richiesta di cancellazione per VirtualNodeConnection %q inviata\n", toDelete.Name)
     return nil
 }
