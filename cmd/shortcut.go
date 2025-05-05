@@ -59,7 +59,7 @@ func listShortcuts() error {
 	}
 
 	scheme := runtime.NewScheme()
-	if err := liqov1beta1.AddToScheme(scheme); err != nil {
+	if err := networkingv1alpha1.AddToScheme(scheme); err != nil {
 		return fmt.Errorf("unable to add Liqo schema: %w", err)
 	}
 
