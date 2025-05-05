@@ -6,6 +6,7 @@ import (
 	"os"
 
 	liqov1beta1 "github.com/liqotech/liqo/apis/core/v1beta1"
+	networkingv1alpha1 "github.com/nates110/vnc-controller/api/v1beta1"
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -48,7 +49,7 @@ func listShortcuts() error {
 		return fmt.Errorf("unable to create client: %w", err)
 	}
 
-	var shList liqov1beta1.VirtualNodeConnectionList
+	var shList networkingv1alpha1.VirtualNodeConnectionList
 	if err := cl.List(ctx, &shList); err != nil {
 		return fmt.Errorf("unable to list Shortcuts: %w", err)
 	}
