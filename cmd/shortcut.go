@@ -10,7 +10,6 @@ import (
 	liqov1beta1 "github.com/liqotech/liqo/apis/core/v1beta1"
 	networkingv1alpha1 "github.com/scal110/foreign_cluster_connector/api/v1beta1"
 	"github.com/spf13/cobra"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
