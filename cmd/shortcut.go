@@ -1,51 +1,86 @@
 package cmd
 
 import (
-    "context"
-    "fmt"
-    "os"
-    "strings"
+	"context"
+	"fmt"
+	"os"
+	"strings"
+	"time"
 
-    liqov1beta1 "github.com/liqotech/liqo/apis/core/v1beta1"
-    networkingv1alpha1 "github.com/scal110/foreign_cluster_connector/api/v1beta1"
-    "github.com/spf13/cobra"
-    metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    "k8s.io/apimachinery/pkg/runtime"
-    ctrl "sigs.k8s.io/controller-runtime"
-    "sigs.k8s.io/controller-runtime/pkg/client"
+	liqov1beta1 "github.com/liqotech/liqo/apis/core/v1beta1"
+	networkingv1alpha1 "github.com/scal110/foreign_cluster_connector/api/v1beta1"
+	"github.com/spf13/cobra"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/liqotech/liqo/pkg/liqo-controller-manager/networking/forge"
 )
 
 var (
-    nodeA string
-    nodeB string
+	nodeA               string
+	nodeB               string
+	mtuFlag             int
+	timeoutFlag         int
+	waitFlag            bool
+	disableSharingFlag  bool
+	namespaceFlag       string
+
+	serverSvcTypeFlag        corev1.ServiceType
+	serverGatewayTypeFlag    string
+	serverTemplateNameFlag   string
+	serverTemplateNsFlag     string
+	serverSvcPortFlag        int
+
+	clientGatewayTypeFlag    string
+	clientTemplateNameFlag   string
+	clientTemplateNsFlag     string
 )
 
 func init() {
-    // existing
-    rootCmd.AddCommand(shortcutsCmd)
+	// Comando principale
+	rootCmd.AddCommand(shortcutsCmd)
 
-    // aggiungi il sotto-comando "create"
-    shortcutsCmd.AddCommand(createShortcutCmd)
-    createShortcutCmd.Flags().StringVarP(&nodeA, "node-a", "a", "", "Nome del primo virtual node (required)")
-    createShortcutCmd.Flags().StringVarP(&nodeB, "node-b", "b", "", "Nome del secondo virtual node (required)")
-    createShortcutCmd.MarkFlagRequired("node-a")
-    createShortcutCmd.MarkFlagRequired("node-b")
+	// --- CREATE ---
+	shortcutsCmd.AddCommand(createShortcutCmd)
+	createShortcutCmd.Flags().StringVarP(&nodeA, "node-a", "a", "", "Nome del primo foreign cluster (required)")
+	createShortcutCmd.Flags().StringVarP(&nodeB, "node-b", "b", "", "Nome del secondo foreign cluster (required)")
+	createShortcutCmd.Flags().StringVar(&namespaceFlag, "namespace", "default", "Namespace della CR")
 
+	createShortcutCmd.MarkFlagRequired("node-a")
+	createShortcutCmd.MarkFlagRequired("node-b")
+
+	createShortcutCmd.Flags().IntVar(&mtuFlag, "mtu", forge.DefaultMTU, "MTU per la connessione")
+	createShortcutCmd.Flags().IntVar(&timeoutFlag, "timeout", 120, "Timeout in secondi")
+	createShortcutCmd.Flags().BoolVar(&waitFlag, "wait", true, "Attendi che la connessione sia stabilita")
+	createShortcutCmd.Flags().BoolVar(&disableSharingFlag, "disable-sharing", false, "Disabilita lo sharing delle chiavi")
+
+	createShortcutCmd.Flags().StringVar(&serverGatewayTypeFlag, "server-gateway-type", forge.DefaultGwServerType, "Tipo di Gateway Server")
+	createShortcutCmd.Flags().StringVar(&serverTemplateNameFlag, "server-template-name", forge.DefaultGwServerTemplateName, "Nome del template Server")
+	createShortcutCmd.Flags().StringVar(&serverTemplateNsFlag, "server-template-namespace", "liqo", "Namespace del template Server")
+	createShortcutCmd.Flags().IntVar(&serverSvcPortFlag, "server-service-port", forge.DefaultGwServerPort, "Porta del service Server")
+	createShortcutCmd.Flags().VarP(NewServiceTypeValue(forge.DefaultGwServerServiceType), "server-service-type", "", "Tipo di service (ClusterIP|NodePort|LoadBalancer)")
+
+	createShortcutCmd.Flags().StringVar(&clientGatewayTypeFlag, "client-gateway-type", forge.DefaultGwClientType, "Tipo di Gateway Client")
+	createShortcutCmd.Flags().StringVar(&clientTemplateNameFlag, "client-template-name", forge.DefaultGwClientTemplateName, "Nome del template Client")
+	createShortcutCmd.Flags().StringVar(&clientTemplateNsFlag, "client-template-namespace", "liqo", "Namespace del template Client")
+
+	// --- DELETE ---
 	shortcutsCmd.AddCommand(deleteShortcutCmd)
-    // flags per delete
-    deleteShortcutCmd.Flags().StringVarP(&nodeA, "node-a", "a", "", "Nome del primo virtual node (required)")
-    deleteShortcutCmd.Flags().StringVarP(&nodeB, "node-b", "b", "", "Nome del secondo virtual node (required)")
-    deleteShortcutCmd.MarkFlagRequired("node-a")
-    deleteShortcutCmd.MarkFlagRequired("node-b")
-
+	deleteShortcutCmd.Flags().StringVarP(&nodeA, "node-a", "a", "", "Nome del primo foreign cluster (required)")
+	deleteShortcutCmd.Flags().StringVarP(&nodeB, "node-b", "b", "", "Nome del secondo foreign cluster (required)")
+	deleteShortcutCmd.Flags().StringVar(&namespaceFlag, "namespace", "default", "Namespace della CR")
+	deleteShortcutCmd.MarkFlagRequired("node-a")
+	deleteShortcutCmd.MarkFlagRequired("node-b")
 }
 
 // ---------------------------
-// LIST SHORTCUTS
+// COMANDO PRINCIPALE
 // ---------------------------
 var shortcutsCmd = &cobra.Command{
 	Use:   "shortcuts",
-	Short: "List all virtualNodeConnections in the current Kubernetes cluster",
+	Short: "Gestisci ForeignClusterConnection tra cluster remoti",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := listShortcuts(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -54,31 +89,18 @@ var shortcutsCmd = &cobra.Command{
 	},
 }
 
-func init() {
-	rootCmd.AddCommand(shortcutsCmd) // aggiungi questo
-}
-
+// ---------------------------
+// LIST SHORTCUTS
+// ---------------------------
 func listShortcuts() error {
-	ctx := context.Background()
-
-	cfg, err := ctrl.GetConfig()
+	cl, err := getClientWithSchemes(liqov1beta1.AddToScheme, networkingv1alpha1.AddToScheme)
 	if err != nil {
-		return fmt.Errorf("unable to get kubeconfig: %w", err)
+		return err
 	}
 
-	scheme := runtime.NewScheme()
-	if err := networkingv1alpha1.AddToScheme(scheme); err != nil {
-		return fmt.Errorf("unable to add Liqo schema: %w", err)
-	}
-
-	cl, err := client.New(cfg, client.Options{Scheme: scheme})
-	if err != nil {
-		return fmt.Errorf("unable to create client: %w", err)
-	}
-
-	var shList networkingv1alpha1.VirtualNodeConnectionList
-	if err := cl.List(ctx, &shList); err != nil {
-		return fmt.Errorf("unable to list Shortcuts: %w", err)
+	var shList networkingv1alpha1.ForeignClusterConnectionList
+	if err := cl.List(context.TODO(), &shList); err != nil {
+		return fmt.Errorf("unable to list connections: %w", err)
 	}
 
 	if len(shList.Items) == 0 {
@@ -87,158 +109,144 @@ func listShortcuts() error {
 	}
 
 	for _, sh := range shList.Items {
-		fmt.Printf("- VirtualNodeA: %s\n  VirtualNodeB: %s\n  IsConnected: %t\n",
-			sh.Spec.VirtualNodeA, sh.Spec.VirtualNodeB, sh.Status.IsConnected)
+		fmt.Printf("- ForeignClusterA: %s\n  ForeignClusterB: %s\n  IsConnected: %t (Phase: %s)\n",
+			sh.Spec.ForeignClusterA, sh.Spec.ForeignClusterB, sh.Status.IsConnected, sh.Status.Phase)
+	}
+	return nil
+}
+
+// ---------------------------
+// CREATE SHORTCUT
+// ---------------------------
+var createShortcutCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Crea una ForeignClusterConnection tra due cluster remoti",
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := createShortcut(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
+func createShortcut() error {
+	cl, err := getClientWithSchemes(liqov1beta1.AddToScheme, networkingv1alpha1.AddToScheme)
+	if err != nil {
+		return err
+	}
+
+	// Verifica l'esistenza dei due ForeignCluster
+	for _, name := range []string{nodeA, nodeB} {
+		var fc liqov1beta1.ForeignCluster
+		if err := cl.Get(context.TODO(), client.ObjectKey{Name: name}, &fc); err != nil {
+			return fmt.Errorf("foreign cluster %q non trovato: %w", name, err)
+		}
+	}
+
+	// Verifica se esiste già
+	var existing networkingv1alpha1.ForeignClusterConnectionList
+	if err := cl.List(context.TODO(), &existing); err != nil {
+		return err
+	}
+	for _, item := range existing.Items {
+		if (item.Spec.ForeignClusterA == nodeA && item.Spec.ForeignClusterB == nodeB) ||
+			(item.Spec.ForeignClusterA == nodeB && item.Spec.ForeignClusterB == nodeA) {
+			fmt.Printf("Connessione già esistente tra %s e %s (Phase: %s)\n", nodeA, nodeB, item.Status.Phase)
+			return nil
+		}
+	}
+
+	// Crea nuova CR
+	name := strings.ToLower(strings.ReplaceAll(fmt.Sprintf("%s-%s", nodeA, nodeB), "_", "-"))
+	newVNC := &networkingv1alpha1.ForeignClusterConnection{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespaceFlag,
+		},
+		Spec: networkingv1alpha1.ForeignClusterConnectionSpec{
+			ForeignClusterA: nodeA,
+			ForeignClusterB: nodeB,
+		},
+	}
+
+	if err := cl.Create(context.TODO(), newVNC); err != nil {
+		return fmt.Errorf("errore nella creazione: %w", err)
+	}
+
+	fmt.Printf("Creato: %s/%s\n", namespaceFlag, name)
+
+	if waitFlag {
+		fmt.Print("Attesa connessione ")
+		for i := 0; i < timeoutFlag; i++ {
+			var updated networkingv1alpha1.ForeignClusterConnection
+			if err := cl.Get(context.TODO(), client.ObjectKey{Namespace: namespaceFlag, Name: name}, &updated); err != nil {
+				return err
+			}
+			if updated.Status.IsConnected {
+				fmt.Println("✓ Connesso!")
+				return nil
+			}
+			fmt.Print(".")
+			time.Sleep(1 * time.Second)
+		}
+		fmt.Println("\n⚠️ Timeout scaduto, connessione non ancora stabilita.")
 	}
 
 	return nil
 }
 
-var createShortcutCmd = &cobra.Command{
-    Use:   "create",
-    Short: "Create a VirtualNodeConnection between two foreign clusters",
-    Run: func(cmd *cobra.Command, args []string) {
-        if err := createShortcut(); err != nil {
-            fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-            os.Exit(1)
-        }
-    },
-}
-
-func createShortcut() error {
-    ctx := context.Background()
-
-    // Carica kubeconfig
-    cfg, err := ctrl.GetConfig()
-    if err != nil {
-        return fmt.Errorf("unable to get kubeconfig: %w", err)
-    }
-
-    // Prepara lo scheme con Liqo e VNC
-    scheme := runtime.NewScheme()
-    if err := liqov1beta1.AddToScheme(scheme); err != nil {
-        return fmt.Errorf("unable to add Liqo schema: %w", err)
-    }
-    if err := networkingv1alpha1.AddToScheme(scheme); err != nil {
-        return fmt.Errorf("unable to add VNC schema: %w", err)
-    }
-
-    // Crea il client
-    cl, err := client.New(cfg, client.Options{Scheme: scheme})
-    if err != nil {
-        return fmt.Errorf("unable to create client: %w", err)
-    }
-
-    // Controlla che esistano i ForeignCluster
-    for _, name := range []string{nodeA, nodeB} {
-        var fc liqov1beta1.ForeignCluster
-        if err := cl.Get(ctx, client.ObjectKey{Name: name}, &fc); err != nil {
-            return fmt.Errorf("foreign cluster %q non trovato: %w", name, err)
-        }
-    }
-
-    // Verifica se esiste già una connessione A↔B o B↔A
-    var existingList networkingv1alpha1.VirtualNodeConnectionList
-    if err := cl.List(ctx, &existingList); err != nil {
-        return fmt.Errorf("impossible to list existing connections: %w", err)
-    }
-    for _, item := range existingList.Items {
-        a := item.Spec.VirtualNodeA
-        b := item.Spec.VirtualNodeB
-        if (a == nodeA && b == nodeB) || (a == nodeB && b == nodeA) {
-            if item.Status.IsConnected {
-                fmt.Printf("Esiste già una connessione funzionante tra %s e %s\n", nodeA, nodeB)
-                return nil
-            }
-            fmt.Printf("Esiste già una CRD tra %s e %s ma non è ancora connessa (phase=%s)\n", nodeA, nodeB, item.Status.Phase)
-            return nil
-        }
-    }
-
-    // Crea il nuovo VirtualNodeConnection
-    name := fmt.Sprintf("%s-%s", nodeA, nodeB)
-    // assicurati che il nome sia valide: minuscole e senza spazi
-    name = strings.ToLower(strings.ReplaceAll(name, "_", "-"))
-
-    vnc := &networkingv1alpha1.VirtualNodeConnection{
-        ObjectMeta: metav1.ObjectMeta{
-            Name:      name,
-            Namespace: "default", // o un flag se vuoi parametrizzare
-        },
-        Spec: networkingv1alpha1.VirtualNodeConnectionSpec{
-            VirtualNodeA: nodeA,
-            // KubeconfigA e B vengono recuperati dal controller runtime
-            KubeconfigA: "",
-            VirtualNodeB: nodeB,
-            KubeconfigB: "",
-        },
-    }
-
-    if err := cl.Create(ctx, vnc); err != nil {
-        return fmt.Errorf("impossibile creare VirtualNodeConnection %q: %w", name, err)
-    }
-
-    fmt.Printf("VirtualNodeConnection %q creata con successo!\n", name)
-    return nil
-}
-
+// ---------------------------
+// DELETE SHORTCUT
+// ---------------------------
 var deleteShortcutCmd = &cobra.Command{
-    Use:   "delete",
-    Short: "Delete a VirtualNodeConnection between two foreign clusters",
-    Run: func(cmd *cobra.Command, args []string) {
-        if err := deleteShortcut(); err != nil {
-            fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-            os.Exit(1)
-        }
-    },
+	Use:   "delete",
+	Short: "Elimina una ForeignClusterConnection esistente",
+	Run: func(cmd *cobra.Command, args []string) {
+		if err := deleteShortcut(); err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+	},
 }
 
 func deleteShortcut() error {
-    ctx := context.Background()
+	cl, err := getClientWithSchemes(liqov1beta1.AddToScheme, networkingv1alpha1.AddToScheme)
+	if err != nil {
+		return err
+	}
 
-    cfg, err := ctrl.GetConfig()
-    if err != nil {
-        return fmt.Errorf("unable to get kubeconfig: %w", err)
-    }
+	var list networkingv1alpha1.ForeignClusterConnectionList
+	if err := cl.List(context.TODO(), &list); err != nil {
+		return err
+	}
 
-    scheme := runtime.NewScheme()
-    if err := liqov1beta1.AddToScheme(scheme); err != nil {
-        return fmt.Errorf("unable to add Liqo schema: %w", err)
-    }
-    if err := networkingv1alpha1.AddToScheme(scheme); err != nil {
-        return fmt.Errorf("unable to add VNC schema: %w", err)
-    }
+	for _, item := range list.Items {
+		if (item.Spec.ForeignClusterA == nodeA && item.Spec.ForeignClusterB == nodeB) ||
+			(item.Spec.ForeignClusterA == nodeB && item.Spec.ForeignClusterB == nodeA) {
+			if err := cl.Delete(context.TODO(), &item); err != nil {
+				return fmt.Errorf("errore nella cancellazione: %w", err)
+			}
+			fmt.Printf("Eliminato: %s/%s\n", item.Namespace, item.Name)
+			return nil
+		}
+	}
+	fmt.Println("Nessuna connessione trovata.")
+	return nil
+}
 
-    cl, err := client.New(cfg, client.Options{Scheme: scheme})
-    if err != nil {
-        return fmt.Errorf("unable to create client: %w", err)
-    }
-
-    // Lista tutte le connessioni e cerca quella corrispondente
-    var list networkingv1alpha1.VirtualNodeConnectionList
-    if err := cl.List(ctx, &list); err != nil {
-        return fmt.Errorf("unable to list VirtualNodeConnections: %w", err)
-    }
-
-    var toDelete *networkingv1alpha1.VirtualNodeConnection
-    for i, item := range list.Items {
-        a, b := item.Spec.VirtualNodeA, item.Spec.VirtualNodeB
-        if (a == nodeA && b == nodeB) || (a == nodeB && b == nodeA) {
-            toDelete = &list.Items[i]
-            break
-        }
-    }
-
-    if toDelete == nil {
-        fmt.Printf("Nessuna VirtualNodeConnection trovata tra %q e %q\n", nodeA, nodeB)
-        return nil
-    }
-
-    // Elimina la CR: il controller gestirà la disconnessione via finalizer
-    if err := cl.Delete(ctx, toDelete); err != nil {
-        return fmt.Errorf("failed to delete VirtualNodeConnection %q: %w", toDelete.Name, err)
-    }
-
-    fmt.Printf("Richiesta di cancellazione per VirtualNodeConnection %q inviata\n", toDelete.Name)
-    return nil
+// ---------------------------
+// UTILITY: client init
+// ---------------------------
+func getClientWithSchemes(schemes ...func(*runtime.Scheme) error) (client.Client, error) {
+	cfg, err := ctrl.GetConfig()
+	if err != nil {
+		return nil, fmt.Errorf("unable to get kubeconfig: %w", err)
+	}
+	scheme := runtime.NewScheme()
+	for _, add := range schemes {
+		if err := add(scheme); err != nil {
+			return nil, err
+		}
+	}
+	return client.New(cfg, client.Options{Scheme: scheme})
 }
