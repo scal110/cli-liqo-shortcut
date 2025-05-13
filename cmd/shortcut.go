@@ -42,7 +42,7 @@ func init() {
 	createShortcutCmd.Flags().StringVarP(&nodeB, "node-b", "b", "", "Nome del secondo virtual node (required)")
 	createShortcutCmd.Flags().StringVar(&namespaceFlag, "namespace", "default", "Namespace della CR")
 	createShortcutCmd.Flags().IntVar(&mtuFlag, "mtu", 1450, "MTU da utilizzare")
-	createShortcutCmd.Flags().BoolVar(&disableSharingFlag, "disable-sharing", false, "Disabilita la condivisione chiavi")
+	//createShortcutCmd.Flags().BoolVar(&disableSharingFlag, "disable-sharing", false, "Disabilita la condivisione chiavi")
 	createShortcutCmd.Flags().IntVar(&timeoutFlag, "timeout", 120, "Timeout della connessione in secondi")
 	createShortcutCmd.Flags().BoolVar(&waitFlag, "wait", true, "Attendi il completamento della connessione")
 	createShortcutCmd.Flags().StringVar(&serverGatewayTypeFlag, "server-gateway-type", forge.DefaultGwServerType, "Tipo gateway server")
@@ -172,7 +172,6 @@ func createShortcut() error {
 			ForeignClusterB: nodeB,
 			Networking: networkingv1alpha1.NetworkingConfig{
 				MTU: int32(mtuFlag),
-				DisableSharingKeys: disableSharingFlag,
 				ServerGatewayType: serverGatewayTypeFlag,
 				ServerTemplateName: serverTemplateNameFlag,
 				ServerTemplateNamespace: serverTemplateNsFlag,
