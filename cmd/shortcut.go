@@ -170,7 +170,7 @@ func createShortcut() error {
 			ForeignClusterA: nodeA,
 			ForeignClusterB: nodeB,
 			Networking: networkingv1alpha1.NetworkingConfig{
-				MTU: int(mtuFlag),
+				MTU: int32(mtuFlag),
 				DisableSharingKeys: disableSharingFlag,
 				ServerGatewayType: serverGatewayTypeFlag,
 				ServerTemplateName: serverTemplateNameFlag,
