@@ -156,22 +156,33 @@ for _, item := range existingList.Items {
 }
 
 // Crea il nuovo ForeignClusterConnection
-name := fmt.Sprintf("%s-%s", nodeA, nodeB)
-// assicurati che il nome sia valide: minuscole e senza spazi
-name = strings.ToLower(strings.ReplaceAll(name, "_", "-"))
-
-vnc := &networkingv1alpha1.ForeignClusterConnection{
+name := strings.ToLower(strings.ReplaceAll(fmt.Sprintf("%s-%s", nodeA, nodeB), "_", "-"))
+newFcc := &networkingv1alpha1.ForeignClusterConnection{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      name,
-		Namespace: "default", // o un flag se vuoi parametrizzare
+		Namespace: namespaceFlag,
 	},
 	Spec: networkingv1alpha1.ForeignClusterConnectionSpec{
 		ForeignClusterA: nodeA,
 		ForeignClusterB: nodeB,
+		Networking: networkingv1alpha1.NetworkingConfig{
+			MTU: mtuFlag,
+			DisableSharingKeys: disableSharingFlag,
+			ServerGatewayType: serverGatewayTypeFlag,
+			ServerTemplateName: serverTemplateNameFlag,
+			ServerTemplateNamespace: serverTemplateNsFlag,
+			ServerServiceType: serverSvcTypeFlag,
+			ServerServicePort: int32(serverSvcPortFlag),
+			ClientGatewayType: clientGatewayTypeFlag,
+			ClientTemplateName: clientTemplateNameFlag,
+			ClientTemplateNamespace: clientTemplateNsFlag,
+			TimeoutSeconds: int32(timeoutFlag),
+			Wait: waitFlag,
+		},
 	},
 }
 
-if err := cl.Create(ctx, vnc); err != nil {
+if err := cl.Create(ctx, newFcc); err != nil {
 	return fmt.Errorf("impossibile creare ForeignClusterConnection %q: %w", name, err)
 }
 
