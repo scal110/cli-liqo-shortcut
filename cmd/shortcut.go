@@ -13,6 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"github.com/liqotech/liqo/pkg/liqo-controller-manager/networking/forge"
 )
 
 var (
@@ -44,13 +45,13 @@ func init() {
 	createShortcutCmd.Flags().BoolVar(&disableSharingFlag, "disable-sharing", false, "Disabilita la condivisione chiavi")
 	createShortcutCmd.Flags().IntVar(&timeoutFlag, "timeout", 120, "Timeout della connessione in secondi")
 	createShortcutCmd.Flags().BoolVar(&waitFlag, "wait", true, "Attendi il completamento della connessione")
-	createShortcutCmd.Flags().StringVar(&serverGatewayTypeFlag, "server-gateway-type", "", "Tipo gateway server")
-	createShortcutCmd.Flags().StringVar(&serverTemplateNameFlag, "server-template-name", "", "Nome template server")
+	createShortcutCmd.Flags().StringVar(&serverGatewayTypeFlag, "server-gateway-type", forge.DefaultGwServerType, "Tipo gateway server")
+	createShortcutCmd.Flags().StringVar(&serverTemplateNameFlag, "server-template-name",  forge.DefaultGwServerTemplateName, "Nome template server")
 	createShortcutCmd.Flags().StringVar(&serverTemplateNsFlag, "server-template-namespace", "liqo", "Namespace del template server")
-	createShortcutCmd.Flags().StringVar(&serverSvcTypeFlag, "server-service-type", "", "Tipo di service server")
-	createShortcutCmd.Flags().IntVar(&serverSvcPortFlag, "server-service-port", 0, "Porta del service server")
-	createShortcutCmd.Flags().StringVar(&clientGatewayTypeFlag, "client-gateway-type", "", "Tipo gateway client")
-	createShortcutCmd.Flags().StringVar(&clientTemplateNameFlag, "client-template-name", "", "Nome template client")
+	createShortcutCmd.Flags().StringVar(&serverSvcTypeFlag, "server-service-type", "NodePort", "Tipo di service server")
+	createShortcutCmd.Flags().IntVar(&serverSvcPortFlag, "server-service-port", forge.DefaultGwServerPort, "Porta del service server")
+	createShortcutCmd.Flags().StringVar(&clientGatewayTypeFlag, "client-gateway-type", forge.DefaultGwClientType, "Tipo gateway client")
+	createShortcutCmd.Flags().StringVar(&clientTemplateNameFlag, "client-template-name", forge.DefaultGwClientTemplateName, "Nome template client")
 	createShortcutCmd.Flags().StringVar(&clientTemplateNsFlag, "client-template-namespace", "liqo", "Namespace del template client")
 	createShortcutCmd.MarkFlagRequired("node-a")
 	createShortcutCmd.MarkFlagRequired("node-b")
