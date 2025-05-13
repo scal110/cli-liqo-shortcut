@@ -60,7 +60,7 @@ func init() {
 	createShortcutCmd.Flags().StringVar(&serverTemplateNameFlag, "server-template-name", forge.DefaultGwServerTemplateName, "Nome del template Server")
 	createShortcutCmd.Flags().StringVar(&serverTemplateNsFlag, "server-template-namespace", "liqo", "Namespace del template Server")
 	createShortcutCmd.Flags().IntVar(&serverSvcPortFlag, "gw-server-service-port", forge.DefaultGwServerPort, "Porta del service Server")
-	createShortcutCmd.Flags().StringVar(&serverSvcTypeFlag, "gw-server-service-type",forge.DefaultGwServerServiceType, "Tipo di service (ClusterIP|NodePort|LoadBalancer)")
+	createShortcutCmd.Flags().StringVar(&serverSvcTypeFlag, "gw-server-service-type",string(forge.DefaultGwServerServiceType), "Tipo di service (ClusterIP|NodePort|LoadBalancer)")
 
 	createShortcutCmd.Flags().StringVar(&clientGatewayTypeFlag, "client-gateway-type", forge.DefaultGwClientType, "Tipo di Gateway Client")
 	createShortcutCmd.Flags().StringVar(&clientTemplateNameFlag, "client-template-name", forge.DefaultGwClientTemplateName, "Nome del template Client")
