@@ -7,10 +7,10 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "liqo-shorcut",
-	Short: "a cli command used to create a shortcut between two foreign clusters",
+	Use:   "liqoshortcut",
+	Short: "a cli command used to manage shortcuts between two foreign clusters",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Ciao dal comando root!")
+		_ =cmd.Help()
 	},
 }
 
