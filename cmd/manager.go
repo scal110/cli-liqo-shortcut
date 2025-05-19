@@ -3,12 +3,9 @@ package cmd
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -34,8 +31,8 @@ all discovered foreign clusters:
 	},
 }
 
-var deployCmd = &cobra.Command{
-	Use:   "setup",
+var installCmd = &cobra.Command{
+	Use:   "install",
 	Short: "Deploy the ForeignClusterConnector controller in the cluster",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("🔧 Deploying controller...")
@@ -49,8 +46,8 @@ var deployCmd = &cobra.Command{
 	},
 }
 
-var undeployCmd = &cobra.Command{
-	Use:   "undeploy",
+var uninstallCmd = &cobra.Command{
+	Use:   "uninstall",
 	Short: "Remove the ForeignClusterConnector controller from the cluster",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("🧹 Removing controller...")
@@ -79,5 +76,5 @@ func init() {
 	// Attach manager under the main rootCmd
 	rootCmd.AddCommand(managerCmd)
 	// Register deploy & remove commands under manager
-	managerCmd.AddCommand(deployCmd, removeCmd)
+	managerCmd.AddCommand(installCmd,uninstallCmd)
 }
