@@ -9,7 +9,7 @@ This CLI tool provides simple commands to deploy and remove the **ForeignCluster
 ## Prerequisites
 
 * A Kubernetes setup using the Liqo **replicated‑deployments** example
-* **Cilium** as the CNI plugin (instead of the default Kindnet), due to known disconnect/reset issues with Kindnet
+* **Cilium** as the CNI plugin (instead of the default Kindnet), due to known `liqoctl disconnect/reset` issues with Kindnet
 * `kubectl` configured to access your **primary** cluster
 
 **Temporary RBAC workaround:**
