@@ -37,6 +37,8 @@ var (
 func init() {
 	rootCmd.AddCommand(shortcutsCmd)
 
+	shortcutsCmd.AddCommand(listShortcutsCmd)
+
 	shortcutsCmd.AddCommand(createShortcutCmd)
 	createShortcutCmd.Flags().StringVarP(&nodeA, "node-a", "a", "", "Nome del primo virtual node (required)")
 	createShortcutCmd.Flags().StringVarP(&nodeB, "node-b", "b", "", "Nome del secondo virtual node (required)")
@@ -65,6 +67,15 @@ func init() {
 
 var shortcutsCmd = &cobra.Command{
 	Use:   "shortcuts",
+	Short: "Gestisci ForeignClusterConnections nel cluster Kubernetes corrente",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		// If no subcommand is provided, display help
+		return cmd.Help()
+	},
+}
+
+var listShortcutsCmd = = &cobra.Command{
+	Use:   "list",
 	Short: "Gestisci ForeignClusterConnections nel cluster Kubernetes corrente",
 	Run: func(cmd *cobra.Command, args []string) {
 		if err := listShortcuts(); err != nil {
