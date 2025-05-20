@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	liqov1beta1 "github.com/liqotech/liqo/apis/core/v1beta1"
