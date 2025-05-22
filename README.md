@@ -68,10 +68,10 @@ liqoshortcut shortcuts --help
 
 Install or uninstall the controller in your primary cluster:
 
-| Command                       | Description                                   | Example                       |
-| ----------------------------- | --------------------------------------------- | ----------------------------- |
-| `liqoshortcut manager deploy` | Deploy the ForeignClusterConnector controller | `liqoshortcut manager deploy` |
-| `liqoshortcut manager remove` | Remove the controller resources               | `liqoshortcut manager remove` |
+| Command                         | Description                                   | Example                          |
+| ------------------------------- | --------------------------------------------- | ---------------------------------|
+| `liqoshortcut manager install`  | Deploy the ForeignClusterConnector controller | `liqoshortcut manager install`   |
+| `liqoshortcut manager uninstall`| Remove the controller resources               | `liqoshortcut manager uninstall` |
 
 
 ---
