@@ -22,6 +22,7 @@ This CLI tool provides simple commands to deploy and remove the **ForeignCluster
 > ```
 >
 >⚠️ This binding is for testing only. A proper ServiceAccount with the necessary ClusterRole and ClusterRoleBinding should be configured for production use.
+> 
 >⚠️ If a non-default setup is used, ensure that the `subjects` field in the `ClusterRoleBinding` is updated to reference the correct ServiceAccount, User, or Group of the main cluster.
 ---
 
